@@ -8,10 +8,12 @@ from stl.mesh import Mesh
 
 
 class GCodeProjector:
-    def __init__(self, gcode_file: str, bed_mesh_file: str, layer_height: float, overwrite: bool = False):
+    def __init__(self, gcode_file: str, bed_mesh_file: str, layer_height: float, maximum_gcode_point_distance: float,
+                 overwrite: bool = False, interpolate_max_count: int = 10):
         self.gcode_path = gcode_file
         self.bed_mesh_path = bed_mesh_file
         self.overwrite = overwrite
+        self.max_dist = maximum_gcode_point_distance
         self.raw_gcode = None
         self.gcode_parser = None
         self.n_layers = None
@@ -24,14 +26,14 @@ class GCodeProjector:
         self.points_per_layer = {}
         self.bed_mesh = None
         self.rays = None
+        self.interpolate_max_count = interpolate_max_count
 
-        self.param_keys = {'X': 0, 'Y': 1, 'Z': 2}
+        self.param_keys = {'X': 0, 'Y': 1, 'Z': 2, 'E': 4}
 
     def run_all(self, output_file: str):
         self.load_gcode()
-        self.find_layer_count()
+        self.parse_points()
         self.read_points()
-        self.clean_points()
         self.sort_points_into_layers()
         self.project_points()
         self.update_gcode()
@@ -44,33 +46,64 @@ class GCodeProjector:
         self.gcode_parser = GcodeParser(self.raw_gcode, include_comments=True)
         print(f'Loaded and parsed gcode from {self.gcode_path}')
 
-    def find_layer_count(self):
-        for line in self.gcode_parser.lines:
+    def parse_points(self):
+        new_lines = []
+        raw_points = []
+        added_points = 0
+        original_len = len(self.gcode_parser.lines)
+        temp_line_buffer = {'command': '', 'comment': ''}
+
+        for i, line in enumerate(self.gcode_parser.lines):
+            temp_line_buffer['command'] = line.command
+            temp_line_buffer['comment'] = line.comment
             if "LAYER_COUNT" in line.comment:
                 self.n_layers = int(line.comment.split(':')[1])
                 print(f'Model has {self.n_layers} layers.')
 
+            raw_points.append(np.array([line.get_param('X'), line.get_param('Y'), line.get_param('E')],
+                                       dtype=float))
+        e_position = 0
+        for i, line in enumerate(self.gcode_parser.lines[:-1]):
+            if line.get_param('E') is not None:
+                e_position = line.get_param('E')
+            new_lines.append(line)
+            vec = raw_points[i + 1][:2] - raw_points[i][:2]
+            xy_dist = np.linalg.norm(vec)
+            if xy_dist > self.max_dist:
+                next_line = self.gcode_parser.lines[i + 1]
+                nvec = vec / xy_dist
+                n = int(np.ceil(xy_dist / self.max_dist))
+                if n < self.interpolate_max_count:
+                    inter_dist = abs(xy_dist / n)
+                    if next_line.command == ('G', 1):
+                        e_dist = next_line.get_param('E') - e_position
+                        inter_e_dist = e_dist / n
+                    for k in range(1, n):
+                        new_line = self.copy_gcode_line(next_line)
+                        new_line.comment += 'INTERPOLATED'
+                        new_line.update_param('X', float(line.get_param('X') + nvec[0] * k * inter_dist))
+                        new_line.update_param('Y', float(line.get_param('Y') + nvec[1] * k * inter_dist))
+                        if next_line.command == ('G', 1):
+                            new_line.update_param('E', float(e_position + inter_e_dist))
+                            e_position = new_line.get_param('E')
+                        new_lines.append(new_line)
+                        added_points += 1
+
+        self.gcode_parser.lines = new_lines
+        print(f'Original GCode has {original_len} points. Added {added_points} interpolated points.')
+
     def read_points(self):
-        i = 0
-        temp_params = {}
-        for key in self.param_keys.keys():
-            temp_params[key] = np.nan
+        z_height = 0
         for i, line in enumerate(self.gcode_parser.lines):
-            for key in self.param_keys.keys():
-                if key in line.params.keys():
-                    temp_params[key] = line.get_param(key)
+            if line.get_param('Z') is None:
+                z = z_height
+            else:
+                z = line.get_param('Z')
+                z_height = z
+            self.original_points_list.append(
+                np.array([line.get_param('X'), line.get_param('Y'), z, i, line.get_param('E')], dtype=float))
 
-            self.original_points_list.append(np.array([temp_params['X'], temp_params['Y'], temp_params['Z'], i]))
-
-    def clean_points(self):
-        cleaned_points = []
-        for point in self.original_points_list:
-            if np.sum(np.isnan(point[:-1]).astype(int)) == 0:
-                cleaned_points.append(point)
-
-        self.original_points_list = cleaned_points
-        self.original_points_arr = np.array(cleaned_points)
-        print(f'Found {len(self.original_points_arr)} points after cleanup.')
+        self.original_points_arr = np.array(self.original_points_list)
 
     def sort_points_into_layers(self):
         self.layer_z_vals = np.unique(self.original_points_arr[:, 2])
@@ -83,14 +116,15 @@ class GCodeProjector:
             old_line = self.gcode_parser.lines[ind]
             new_params = old_line.params
             for key, i in self.param_keys.items():
-                new_params[key] = float(point[i])
+                if np.isfinite(point[i]):
+                    new_params[key] = float(point[i])
 
             new_line = GcodeLine(command=old_line.command, params=new_params, comment=old_line.comment)
             self.gcode_parser.lines[ind] = new_line
 
     def export_projected_gcode(self, export_path: str):
         with open(export_path, 'w') as f:
-            f.writelines([line.gcode_str+'\n' for line in self.gcode_parser.lines])
+            f.writelines([line.gcode_str + '\n' for line in self.gcode_parser.lines])
 
         print(f'Updated gcode written to {export_path}')
 
@@ -101,9 +135,6 @@ class GCodeProjector:
         fig3d.show()
 
     def plot_projected_points(self):
-        # vertices = np.asarray(self.bed_mesh.vertices)
-        # fig3d = px.scatter_3d(x=vertices[:, 0], y=vertices[:, 1], z=vertices[:, 2])
-        # fig3d.show()
         bed = Mesh.from_file(self.bed_mesh_path)
         vertices, i, j, k = self.stl2mesh3d(bed)
         x, y, z = vertices.T
@@ -154,7 +185,7 @@ class GCodeProjector:
         for z_height, layer_points in self.points_per_layer.items():
             print(f'Projecting layer z={z_height} ...')
             layer_points[:, 2] = max_bed_height * 2
-            rays = self._generate_ray_tensors(layer_points[:, :-1])
+            rays = self._generate_ray_tensors(layer_points[:, :-2])
             scene = o3d.t.geometry.RaycastingScene()
             scene.add_triangles(o3d.t.geometry.TriangleMesh.from_legacy(mesh_legacy=self.bed_mesh))
             normal_cast = scene.cast_rays(rays, nthreads=0)
@@ -186,3 +217,7 @@ class GCodeProjector:
         J = np.take(ixr, [3 * k + 1 for k in range(p)])
         K = np.take(ixr, [3 * k + 2 for k in range(p)])
         return vertices, I, J, K
+
+    @staticmethod
+    def copy_gcode_line(line: GcodeLine):
+        return GcodeLine(command=line.command, params=line.params.copy(), comment=line.comment)
