@@ -101,11 +101,11 @@ class ModelHandler:
         pcd.points = o3d.utility.Vector3dVector(mesh_points)
         pcd.normals = o3d.utility.Vector3dVector(normals)
         # o3d.visualization.draw_geometries([pcd])
-        # radii = [0.005, 0.01, 0.02, 0.04]
-        # rec_mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(
-        #     pcd, o3d.utility.DoubleVector(radii))
+        radii = [self.sampling_distance * 0.9]
+        rec_mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(
+            pcd, o3d.utility.DoubleVector(radii))
         # rec_mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_alpha_shape(pcd, 0.5)
-        rec_mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(pcd, depth=9)
+        # rec_mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(pcd, depth=9)
         rec_mesh = rec_mesh.compute_vertex_normals()
         rec_mesh = rec_mesh.compute_triangle_normals()
         # rec_mesh.estimate_normals()
