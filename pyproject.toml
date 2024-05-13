@@ -1,0 +1,29 @@
+# pyproject.toml
+
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "curacc"
+version = "0.0.1"
+description = "Constant curvature slicer based on cura."
+readme = "README.md"
+authors = [{ name = "Elias Ankerhold", email = "elias.ankerhold@aalto.fi" }]
+license = { file = "LICENSE.txt" }
+classifiers = [
+    "License :: OSI Approved :: GPL-3.0-only",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+]
+dependencies = [
+    "numpy>=1.20.0",
+    "open3d==0.17.0",
+    "pandas>=1.2.0",
+    "plotly>=5.17.0",
+    "plotly-express>=0.4.1",
+]
+
+[tool.setuptools]
+packages = ['curacc']
