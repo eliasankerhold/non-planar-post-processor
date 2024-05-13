@@ -5,6 +5,7 @@ import copy
 from numpy.typing import NDArray
 import matplotlib.pyplot as plt
 import plotly.express as px
+import gcodeparser as gcp
 
 
 class ModelHandler:
