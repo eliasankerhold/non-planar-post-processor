@@ -44,7 +44,7 @@ From the user-side, the workflow is very simple:
 
 <span style='color:orangered'>
 <h3>WARNING!</h3>
-    Be careful when printing, this approach is highly experimental and can cause crashes, issues with bed leveling and other unexpected behavior. Check the result in a gcode previewer before printing.
+    <strong>Be careful when printing, this approach is highly experimental and can cause crashes, issues with bed leveling and other unexpected behavior. Check the result in a gcode previewer before printing.</strong>
 </span>
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
