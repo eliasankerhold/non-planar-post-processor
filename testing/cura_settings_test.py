@@ -11,7 +11,7 @@
 # mesh_points = handler.extrude_mesh(points=points)
 # # handler.show_ray_casting_result(projected_points=mesh_points)
 
-from curacc.settings_parser import log_to_json, find_missing_settings
+from nonplanarpp.settings_parser import log_to_json, find_missing_settings
 import os
 
 log_export_file = os.path.join('../cura_resources', 'all_settings')
