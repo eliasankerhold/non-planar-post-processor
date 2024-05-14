@@ -9,7 +9,7 @@ from stl.mesh import Mesh
 
 class GCodeProjector:
     def __init__(self, gcode_file: str, bed_mesh_file: str, layer_height: float, maximum_gcode_point_distance: float,
-                 overwrite: bool = False, interpolate_max_count: int = 10):
+                 overwrite: bool = False, interpolate_max_count: int = 10000):
         self.gcode_path = gcode_file
         self.bed_mesh_path = bed_mesh_file
         self.overwrite = overwrite
@@ -18,7 +18,6 @@ class GCodeProjector:
         self.gcode_parser = None
         self.n_layers = None
         self.original_points_list = []
-        self.projected_points_list = []
         self.original_points_arr = None
         self.projected_points_arr = None
         self.layer_height = layer_height
@@ -30,7 +29,7 @@ class GCodeProjector:
 
         self.param_keys = {'X': 0, 'Y': 1, 'Z': 2, 'E': 4}
 
-    def run_all(self, output_file: str):
+    def run_all(self, output_file: str, show_result=True):
         self.load_gcode()
         self.parse_points()
         self.read_points()
@@ -38,6 +37,7 @@ class GCodeProjector:
         self.project_points()
         self.update_gcode()
         self.export_projected_gcode(output_file)
+        self.plot_projected_points()
 
     def load_gcode(self):
         with open(self.gcode_path, 'r') as f:

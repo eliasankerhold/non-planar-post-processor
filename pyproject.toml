@@ -6,8 +6,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "curacc"
-version = "0.0.2"
-description = "Constant curvature slicer based on cura."
+version = "0.1.0"
+description = "GCode post processor to print on non-planar surfaces."
 readme = "README.md"
 authors = [{ name = "Elias Ankerhold", email = "elias.ankerhold@aalto.fi" }]
 license = { file = "LICENSE.txt" }
@@ -16,6 +16,9 @@ classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
     "numpy>=1.20.0",
@@ -27,4 +30,4 @@ dependencies = [
 ]
 
 [tool.setuptools]
-packages = ['curacc']
+packages = ['nonplanarpp']
