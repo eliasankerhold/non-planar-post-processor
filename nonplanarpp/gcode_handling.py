@@ -37,7 +37,8 @@ class GCodeProjector:
         self.project_points()
         self.update_gcode()
         self.export_projected_gcode(output_file)
-        self.plot_projected_points()
+        if show_result:
+            self.plot_projected_points()
 
     def load_gcode(self):
         with open(self.gcode_path, 'r') as f:
@@ -183,7 +184,7 @@ class GCodeProjector:
         print(f'Loaded bed mesh: {self.bed_mesh_path}')
         max_bed_height = np.asarray(self.bed_mesh.vertices)[:, 2].max()
         for z_height, layer_points in self.points_per_layer.items():
-            print(f'Projecting layer z={z_height} ...')
+            print(f'Projecting layer z={z_height:010} ...')
             layer_points[:, 2] = max_bed_height * 2
             rays = self._generate_ray_tensors(layer_points[:, :-2])
             scene = o3d.t.geometry.RaycastingScene()
@@ -193,7 +194,7 @@ class GCodeProjector:
             self.points_per_layer[z_height][:, 2] += z_height - dists
 
         self.projected_points_arr = np.concatenate(tuple([np.array(k) for k in self.points_per_layer.values()]))
-        print('Projecting completed!')
+        print('\nProjecting completed!')
 
     @staticmethod
     def _generate_ray_tensors(points):
