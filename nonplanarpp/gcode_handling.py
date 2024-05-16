@@ -191,6 +191,7 @@ class GCodeProjector:
             self.gcode_parser.lines[ind] = new_line
 
     def export_projected_gcode(self, export_path: str):
+        print('Writing gcode...')
         with open(export_path, 'w') as f:
             f.writelines([line.gcode_str + '\n' for line in self.gcode_parser.lines])
 
