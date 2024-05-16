@@ -9,7 +9,8 @@ from stl.mesh import Mesh
 
 class GCodeProjector:
     def __init__(self, gcode_file: str, bed_mesh_file: str, layer_height: float, maximum_gcode_point_distance: float,
-                 overwrite: bool = False, interpolate_max_count: int = 10000):
+                 z_homing_position: tuple[float, float], standard_z_homing: tuple[float, float],
+                 overwrite: bool = False):
         self.gcode_path = gcode_file
         self.bed_mesh_path = bed_mesh_file
         self.overwrite = overwrite
@@ -25,7 +26,10 @@ class GCodeProjector:
         self.points_per_layer = {}
         self.bed_mesh = None
         self.rays = None
-        self.interpolate_max_count = interpolate_max_count
+        self.working_height = None
+        self.z_homing_pos = np.array(z_homing_position)
+        self.z_safety_dist = 4
+        self.standard_z_homing = np.array(standard_z_homing)
 
         self.param_keys = {'X': 0, 'Y': 1, 'Z': 2, 'E': 4}
 
@@ -48,11 +52,16 @@ class GCodeProjector:
         print(f'Loaded and parsed gcode from {self.gcode_path}')
 
     def parse_points(self):
+        pre_adjusted_lines = []
         new_lines = []
         raw_points = []
         added_points = 0
         original_len = len(self.gcode_parser.lines)
         temp_line_buffer = {'command': '', 'comment': ''}
+
+        self.bed_mesh = o3d.io.read_triangle_mesh(self.bed_mesh_path)
+        print(f'Loaded bed mesh: {self.bed_mesh_path}')
+        self.working_height = np.asarray(self.bed_mesh.vertices)[:, 2].max() * 1.5
 
         for i, line in enumerate(self.gcode_parser.lines):
             temp_line_buffer['command'] = line.command
@@ -61,34 +70,86 @@ class GCodeProjector:
                 self.n_layers = int(line.comment.split(':')[1])
                 print(f'Model has {self.n_layers} layers.')
 
-            raw_points.append(np.array([line.get_param('X'), line.get_param('Y'), line.get_param('E')],
-                                       dtype=float))
+            if line.command == ('G', 28):
+                pre_adjusted_lines.append(GcodeLine(command=('G', 0),
+                                                    params={'Z': np.round(float(self.working_height * 2), 5)},
+                                                    comment='raise to safe working height'))
+                raw_points.append(np.array([pre_adjusted_lines[-1].get_param('X'),
+                                            pre_adjusted_lines[-1].get_param('Y'),
+                                            pre_adjusted_lines[-1].get_param('E')],
+                                           dtype=float))
+                pre_adjusted_lines.append(GcodeLine(command=('G', '28 X Y'), params={},
+                                                    comment='home x and y axes'))
+                raw_points.append(np.array([np.nan, np.nan, np.nan], dtype=float))
+                pre_adjusted_lines.append(GcodeLine(command=('M',f'206 '
+                                                                 f'X{float(self.standard_z_homing[0] - self.z_homing_pos[0])} '
+                                                                 f'Y{float(self.standard_z_homing[1] -self.z_homing_pos[1])} '
+                                                                 f'Z0'), params={},
+                                                    comment='apply home offsets in x and y'))
+                raw_points.append(np.array([np.nan, np.nan, np.nan], dtype=float))
+                pre_adjusted_lines.append(GcodeLine(command=('M', 500), params={},
+                                                    comment='save home offsets'))
+                raw_points.append(np.array([np.nan, np.nan, np.nan], dtype=float))
+                pre_adjusted_lines.append(GcodeLine(command=('G', '28 Z'), params={},
+                                                    comment='home z axis'))
+                raw_points.append(np.array([np.nan, np.nan, np.nan], dtype=float))
+                pre_adjusted_lines.append(GcodeLine(command=('G', 0),
+                                                    params={'Z': np.round(float(self.working_height) * 2, 5)},
+                                                    comment='raise to safe working height'))
+                raw_points.append(np.array([self.z_homing_pos[0],
+                                            self.z_homing_pos[1],
+                                            self.working_height], dtype=float))
+                pre_adjusted_lines.append(GcodeLine(command=('M', '206 X0 Y0 Z0'), params={},
+                                                    comment='reset home offsets in x and y'))
+                raw_points.append(np.array([np.nan, np.nan, np.nan], dtype=float))
+                pre_adjusted_lines.append(GcodeLine(command=('M', 500), params={},
+                                                    comment='save home offsets'))
+                raw_points.append(np.array([self.z_homing_pos[0], self.z_homing_pos[1], np.nan], dtype=float))
+                print('Replaced G28 with custom homing procedure.')
+
+            else:
+                pre_adjusted_lines.append(line)
+                raw_points.append(np.array([line.get_param('X'), line.get_param('Y'), line.get_param('E')],
+                                           dtype=float))
         e_position = 0
-        for i, line in enumerate(self.gcode_parser.lines[:-1]):
-            if line.get_param('E') is not None:
-                e_position = line.get_param('E')
+        xy_position = raw_points[0][:2]
+        x_dist, y_dist = 0, 0
+        for i, line in enumerate(pre_adjusted_lines[:-1]):
+            if not np.isnan(raw_points[i][0]):
+                xy_position[0] = raw_points[i][0]
+            if not np.isnan(raw_points[i][1]):
+                xy_position[1] = raw_points[i][1]
+            if not np.isnan(raw_points[i][2]):
+                e_position = raw_points[i][2]
             new_lines.append(line)
-            vec = raw_points[i + 1][:2] - raw_points[i][:2]
+            if not np.isnan(raw_points[i + 1][0]):
+                x_dist = raw_points[i + 1][0] - xy_position[0]
+            if not np.isnan(raw_points[i + 1][1]):
+                y_dist = raw_points[i + 1][1] - xy_position[1]
+            vec = np.array([x_dist, y_dist])
             xy_dist = np.linalg.norm(vec)
-            if xy_dist > self.max_dist:
-                next_line = self.gcode_parser.lines[i + 1]
+            if not np.isnan(raw_points[i + 1][0]) and not np.isnan(raw_points[i + 1][1]) and xy_dist > self.max_dist:
+                next_line = pre_adjusted_lines[i + 1]
                 nvec = vec / xy_dist
                 n = int(np.ceil(xy_dist / self.max_dist))
-                if n < self.interpolate_max_count:
-                    inter_dist = abs(xy_dist / n)
-                    if next_line.command == ('G', 1):
-                        e_dist = next_line.get_param('E') - e_position
-                        inter_e_dist = e_dist / n
-                    for k in range(1, n):
-                        new_line = self.copy_gcode_line(next_line)
-                        new_line.comment += 'INTERPOLATED'
-                        new_line.update_param('X', float(line.get_param('X') + nvec[0] * k * inter_dist))
-                        new_line.update_param('Y', float(line.get_param('Y') + nvec[1] * k * inter_dist))
-                        if next_line.command == ('G', 1):
-                            new_line.update_param('E', float(e_position + inter_e_dist))
-                            e_position = new_line.get_param('E')
-                        new_lines.append(new_line)
-                        added_points += 1
+                inter_dist = abs(xy_dist / n)
+                if next_line.command == ('G', 1) and next_line.get_param('E') is not None:
+                    e_dist = next_line.get_param('E') - e_position
+                    inter_e_dist = e_dist / n
+                # if xy_dist > self.z_safety_dist and next_line.get_param('E') is None:
+                #     new_lines.append(GcodeLine(command=('G', 0),
+                #                                params={'Z': np.round(self.working_height, 0)},
+                #                                comment='z safety move'))
+                for k in range(1, n):
+                    new_line = self.copy_gcode_line(next_line)
+                    new_line.comment += '--INTERPOLATED'
+                    new_line.update_param('X', float(xy_position[0] + nvec[0] * k * inter_dist))
+                    new_line.update_param('Y', float(xy_position[1] + nvec[1] * k * inter_dist))
+                    if next_line.command == ('G', 1) and next_line.get_param('E'):
+                        new_line.update_param('E', float(e_position + inter_e_dist))
+                        e_position = new_line.get_param('E')
+                    new_lines.append(new_line)
+                    added_points += 1
 
         self.gcode_parser.lines = new_lines
         print(f'Original GCode has {original_len} points. Added {added_points} interpolated points.')
@@ -118,7 +179,7 @@ class GCodeProjector:
             new_params = old_line.params
             for key, i in self.param_keys.items():
                 if np.isfinite(point[i]):
-                    new_params[key] = float(point[i])
+                    new_params[key] = float(np.round(point[i], 4))
 
             new_line = GcodeLine(command=old_line.command, params=new_params, comment=old_line.comment)
             self.gcode_parser.lines[ind] = new_line
@@ -180,17 +241,16 @@ class GCodeProjector:
         plt.show()
 
     def project_points(self):
-        self.bed_mesh = o3d.io.read_triangle_mesh(self.bed_mesh_path)
-        print(f'Loaded bed mesh: {self.bed_mesh_path}')
-        max_bed_height = np.asarray(self.bed_mesh.vertices)[:, 2].max()
+
         for z_height, layer_points in self.points_per_layer.items():
             print(f'Projecting layer z={z_height:010} ...')
-            layer_points[:, 2] = max_bed_height * 2
+            layer_points[:, 2] = self.working_height * 2
             rays = self._generate_ray_tensors(layer_points[:, :-2])
             scene = o3d.t.geometry.RaycastingScene()
             scene.add_triangles(o3d.t.geometry.TriangleMesh.from_legacy(mesh_legacy=self.bed_mesh))
             normal_cast = scene.cast_rays(rays, nthreads=0)
             dists = normal_cast['t_hit'].numpy()
+            dists[np.isnan(dists)] = 0
             self.points_per_layer[z_height][:, 2] += z_height - dists
 
         self.projected_points_arr = np.concatenate(tuple([np.array(k) for k in self.points_per_layer.values()]))
