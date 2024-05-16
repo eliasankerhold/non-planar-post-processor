@@ -62,6 +62,8 @@ class GCodeProjector:
         self.bed_mesh = o3d.io.read_triangle_mesh(self.bed_mesh_path)
         print(f'Loaded bed mesh: {self.bed_mesh_path}')
         self.working_height = np.asarray(self.bed_mesh.vertices)[:, 2].max() * 1.5
+        pre_adjusted_lines.append(GcodeLine(command=('M', 211), params={'S': 0}, comment='disable software endstops'))
+        raw_points.append(np.array([np.nan, np.nan, np.nan], dtype=float))
 
         for i, line in enumerate(self.gcode_parser.lines):
             temp_line_buffer['command'] = line.command
@@ -111,6 +113,10 @@ class GCodeProjector:
                 pre_adjusted_lines.append(line)
                 raw_points.append(np.array([line.get_param('X'), line.get_param('Y'), line.get_param('E')],
                                            dtype=float))
+        pre_adjusted_lines.append(GcodeLine(command=('M', 211), params={'S': 1}, comment='enable software endstops'))
+        raw_points.append(np.array([np.nan, np.nan, np.nan], dtype=float))
+        pre_adjusted_lines.append(GcodeLine(command=('G', 0), params={}, comment='buffer line'))
+        raw_points.append(np.array([np.nan, np.nan, np.nan], dtype=float))
         e_position = 0
         xy_position = raw_points[0][:2]
         x_dist, y_dist = 0, 0
