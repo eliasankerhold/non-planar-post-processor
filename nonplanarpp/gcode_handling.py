@@ -106,36 +106,15 @@ class GCodeProjector:
                 raw_points.append(np.array([np.nan, np.nan, np.nan], dtype=float))
                 pre_adjusted_lines.append(GcodeLine(command=('M', 500), params={},
                                                     comment='save home offsets'))
-                raw_points.append(np.array([self.z_homing_pos[0], self.z_homing_pos[1], np.nan], dtype=float))
-                pre_adjusted_lines.append(GcodeLine(command=('M', 300), params={'P': 300, 'S': 370},
-                                                    comment='play silly tune'))
                 raw_points.append(np.array([np.nan, np.nan, np.nan], dtype=float))
-                pre_adjusted_lines.append(GcodeLine(command=('M', 300), params={'P': 300, 'S': 370},
-                                                    comment='play silly tune'))
+                pre_adjusted_lines.append(GcodeLine(command=('M', 300), params={'P': 400, 'S': 370},
+                                                    comment='beep'))
                 raw_points.append(np.array([np.nan, np.nan, np.nan], dtype=float))
-                pre_adjusted_lines.append(GcodeLine(command=('G4', ' 300'), params={},
+                pre_adjusted_lines.append(GcodeLine(command=('G4', ' 200'), params={},
                                                     comment='pause'))
                 raw_points.append(np.array([np.nan, np.nan, np.nan], dtype=float))
-                pre_adjusted_lines.append(GcodeLine(command=('M', 300), params={'P': 300, 'S': 370},
-                                                    comment='play silly tune'))
-                raw_points.append(np.array([np.nan, np.nan, np.nan], dtype=float))
-                pre_adjusted_lines.append(GcodeLine(command=('G4', ' 300'), params={},
-                                                    comment='pause'))
-                raw_points.append(np.array([np.nan, np.nan, np.nan], dtype=float))
-                pre_adjusted_lines.append(GcodeLine(command=('M', 300), params={'P': 300, 'S': 370},
-                                                    comment='play silly tune'))
-                raw_points.append(np.array([np.nan, np.nan, np.nan], dtype=float))
-                pre_adjusted_lines.append(GcodeLine(command=('M', 300), params={'P': 600, 'S': 370},
-                                                    comment='play silly tune'))
-                raw_points.append(np.array([np.nan, np.nan, np.nan], dtype=float))
-                pre_adjusted_lines.append(GcodeLine(command=('M', 300), params={'P': 300, 'S': 494},
-                                                    comment='play silly tune'))
-                raw_points.append(np.array([np.nan, np.nan, np.nan], dtype=float))
-                pre_adjusted_lines.append(GcodeLine(command=('G4', ' 600'), params={},
-                                                    comment='pause'))
-                raw_points.append(np.array([np.nan, np.nan, np.nan], dtype=float))
-                pre_adjusted_lines.append(GcodeLine(command=('M', ' 300'), params={'P': 300, 'S': 392},
-                                                    comment='play silly tune'))
+                pre_adjusted_lines.append(GcodeLine(command=('M', 300), params={'P': 400, 'S': 370},
+                                                    comment='beep'))
                 raw_points.append(np.array([np.nan, np.nan, np.nan], dtype=float))
                 pre_adjusted_lines.append(GcodeLine(command=('G4', ' 10000'), params={},
                                                     comment='wait for 10 seconds to flip z offset probe'))
