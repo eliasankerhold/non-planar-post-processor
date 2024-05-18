@@ -64,6 +64,8 @@ class GCodeProjector:
         self.working_height = np.asarray(self.bed_mesh.vertices)[:, 2].max() * 1.5
         pre_adjusted_lines.append(GcodeLine(command=('M', 211), params={'S': 0}, comment='disable software endstops'))
         raw_points.append(np.array([np.nan, np.nan, np.nan], dtype=float))
+        pre_adjusted_lines.append(GcodeLine(command=('M', 420), params={'S': 0}, comment='disable mesh leveling'))
+        raw_points.append(np.array([np.nan, np.nan, np.nan], dtype=float))
 
         for i, line in enumerate(self.gcode_parser.lines):
             temp_line_buffer['command'] = line.command
