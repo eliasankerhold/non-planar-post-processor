@@ -293,7 +293,7 @@ Design Factory</a> at <a href="https://www.aalto.fi/en">Aalto University</a> in 
 
 ## Contact
 
-Elias Ankerhold - elias.ankerhold[at]aalto.fi
+Elias Ankerhold - elias.ankerhold[at]aalto.fi <br>
 Jonas Tjepkema - jonas.tjepkema[at]aalto.fi
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
