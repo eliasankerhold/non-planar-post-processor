@@ -194,7 +194,7 @@ The following steps only have to be done when setting up a non-planar printing s
 the system, making changes to the hardware, etc. However, it is utmost important to calibrate the system as precisely as
 possible, since any inaccuracies in these steps will limit the printing performance fundamentally.
 
-<!-- Z HOMING -->
+<!-- Z-HOMING POSITION -->
 ### Z-Homing Position
 
 Since the non-planar print bed is not uniform, the z axis cannot be homed at any arbitrary position on the bed, but only
@@ -213,7 +213,7 @@ a coordinate shift is applied to the printer in such a way that the standard z h
 coordinate system is mapped onto the new position. After homing the z axis, this coordinate shift is reversed and the
 printer moves in its standard coordinates.
 
-<!-- BUFFER ZONES -->
+<!-- BUFFER ZONES AND SAFETY MARGINS -->
 ### Buffer Zones and Safety Margins
 
 Since points saved in the G-Code instructions for the printer only describe the position of the nozzle tip and don't
@@ -228,7 +228,7 @@ surface of the adapted model and prevent the crashes.
     <figcaption>Comparison between actual model of the print bed (lower right) and adapted version with safety and buffer zones (upper left). Using the adapted print bed model in the post-processing procedure prevents the nozzle from crashing at sharp edges.</figcaption>
 </figure>
 
-<!-- BED ALIGNMENT -->
+<!-- PRINT BED ALIGNMENT -->
 ### Print Bed Alignment
 
 There is no actual direct feedback mechanism between printer and the non-planar bed. Basically, the printer does not "
