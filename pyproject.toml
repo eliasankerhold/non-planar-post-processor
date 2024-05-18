@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nonplanarpp"
-version = "0.1.0"
+version = "0.2.0"
 description = "GCode post processor to print on non-planar surfaces."
 readme = "README.md"
 authors = [{ name = "Elias Ankerhold", email = "elias.ankerhold@aalto.fi" }]
@@ -27,6 +27,8 @@ dependencies = [
     "plotly>=5.17.0",
     "plotly-express>=0.4.1",
     "gcodeparser>=0.2.0",
+    "matplotlib>=3.5.0",
+    "numpy-stl>=0.0.3"
 ]
 
 [tool.setuptools]
