@@ -4,7 +4,7 @@
   <h3 align="center">Non-Planar Post Processor</h3>
 
   <p align="center">
-    A Python tool to post process 3d-printer gcode for FDM printing on non-planar surfaces.
+    A Python tool to post process 3D-printer G-Code for FDM printing on non-planar surfaces.
   </p>
 </div>
 
