@@ -35,9 +35,9 @@
     <li>
       <a href="#setup-and-calibration">Setup and Calibration</a>
       <ul>
-         <li><a href="#z-homing">Z-Homing Position</a></li>
-         <li><a href="#buffer-zones">Buffer Zones and Safety Margins</a></li>
-         <li><a href="#bed-alignment">Print Bed Alignment</a></li>
+         <li><a href="#z-homing-position">Z-Homing Position</a></li>
+         <li><a href="#buffer-zones-and-safety-margins">Buffer Zones and Safety Margins</a></li>
+         <li><a href="#print-bed-alignment">Print Bed Alignment</a></li>
       </ul>
     </li>
    <li><a href="#general-notes">General Notes</a></li>
